@@ -6,6 +6,7 @@
 	import flash.events.*;
 	import flash.utils.getDefinitionByName;
 	import flash.text.*;
+	import fl.motion.Color;
 
 	public class GrabbinBuns extends MovieClip
 	{
@@ -17,6 +18,8 @@
 		var CinnaBun:Class;
 		[Embed('/Images/HamBun.png')]
 		var HamBun:Class;
+		[Embed('/Images/BunB.png')]
+		var BunB:Class;
 
 		[Embed('/Images/Beaker.png')]
 		var Beaker:Class;
@@ -43,10 +46,9 @@
 		[Embed('/Images/Vest.png')]
 		var Vest:Class;
 
-		public var images:Array = new Array(CinnaBun,GirlHairBun,HamBun,JeanBun,Beaker,BowlerHat,CameraImg,Cheese,Corn,Grape,Hair,HotDog,PartyHat,Shark,Sunglasses,Vest);
+		public var images:Array = new Array(CinnaBun,GirlHairBun,HamBun,JeanBun,BunB,Beaker,BowlerHat,CameraImg,Cheese,Corn,Grape,Hair,HotDog,PartyHat,Shark,Sunglasses,Vest);
 		public var prizes:Array = new Array();
 		public var score:int;
-		public var partyTime:Boolean;
 		public var daClaw:Claw;
 		private var scoreTextField:TextField = new TextField();
 		private var messageTextField:TextField = new TextField();
@@ -54,8 +56,12 @@
 		private var effectLayer:MovieClip = new MovieClip();
 		private var freezeTimer:uint;
 		private var messageTimer:uint;
+		private var gasTimer:uint;
+		private var gasIntensity:Number;
+		private var gasDuration:uint;
 		private var partyTimer:uint;
-		private var partyIntenisty:Number = new Number(.2);
+		private var partyRandomRGB:Number = new Number(Math.random() * 0xFFFFFF);
+		private var partyIntensity:Number = new Number(0);
 		public function GrabbinBuns()
 		{
 			stage.addEventListener(MouseEvent.MOUSE_DOWN, startGame);
@@ -88,6 +94,8 @@
 			var brainFlowerFont = new BrainFlower();
 			var brainFlowerFormat = new TextFormat();
 			brainFlowerFormat.font = brainFlowerFont.fontName;
+			brainFlowerFormat.bold = true;
+			brainFlowerFormat.color = 0xFFFFFF;
 			brainFlowerFormat.size = 30;
 
 			//create score field
@@ -137,14 +145,21 @@
 
 			}//handle special events
 			//party mode
-			if (partyTime)
+			effectLayer.graphics.clear();
+
+			if (partyTimer>0)
 			{
 				doParty();
+			}
+			if (gasTimer>0)
+			{
+				doGas();
 			}
 			//displaying messages
 			if (messageTimer>0)
 			{
 				messageTimer--;
+				//shake effect
 				messageTextField.x = stage.stageWidth / 2 - messageTextField.width / 2 + Tool.randomRange(-2,2);
 				messageTextField.y = stage.stageHeight / 2 - messageTextField.height / 2 + Tool.randomRange(-2,2);
 			}
@@ -157,22 +172,28 @@
 		public function doParty()
 		{
 			//every third frame generate a random color overlay
-			effectLayer.graphics.clear();
 			partyTimer--;
-			if (partyTimer>0)
+			
+			if (partyTimer%3==0)
 			{
-				if (partyTimer%3==0)
-				{
-					effectLayer.graphics.beginFill(Math.random() * 0xFFFFFF, .5);
-					effectLayer.graphics.drawRect(0,0,stage.stageWidth,stage.stageHeight);
-					effectLayer.graphics.endFill();
+				partyRandomRGB = Math.random() * 0xFFFFFF;
 
-				}
 			}
-			else
-			{
-				partyTime = false;
-			}
+			effectLayer.graphics.beginFill(partyRandomRGB, partyIntensity);
+			effectLayer.graphics.drawRect(0,0,stage.stageWidth,stage.stageHeight);
+			effectLayer.graphics.endFill();
+			if (partyTimer == 0) partyIntensity = 0;
+		}
+
+		public function doGas()
+		{
+			gasTimer--;
+
+			gasIntensity = gasTimer / gasDuration;
+			effectLayer.graphics.beginFill(0x99CC00, gasIntensity);
+			effectLayer.graphics.drawRect(0,0,stage.stageWidth,stage.stageHeight);
+			effectLayer.graphics.endFill();
+
 		}
 
 		public function spawnNewItems(amount:int)
@@ -180,7 +201,7 @@
 			var bunsPresent:Boolean = false;
 			for each (var prize in prizes)
 			{
-				if (prize.prizeType == "Bun")
+				if (prize.prizeType <= Prize.BunsMaxIndex)
 				{
 					bunsPresent = true;
 					break;
@@ -198,7 +219,7 @@
 					randomNum = Tool.randomRange(0,Prize.BunsMaxIndex);
 
 				}
-
+				randomNum = Prize.Cheese;
 				var bmp:Bitmap = new images[randomNum]();
 				var newItem:Prize = new Prize(bmp,randomNum);
 				prizes.push(newItem);
@@ -243,22 +264,28 @@
 							case Prize.JeanBun :
 								setScore(50);
 								break;
+							case Prize.BunB :
+								setScore(500);
+								break;
 							case Prize.PartyHat :
-								startParty(120);
+								partyTimer +=  600;
+								partyIntensity +=  .2;
 								break;
 							case Prize.BowlerHat :
 								break;
 							case Prize.CameraImg :
 								freezeTimer = 120;
 								break;
-								//cover screen with gas
 							case Prize.Cheese :
+								//cover screen with gas
+								gasTimer = 240;
+								gasDuration = 240;
 							case Prize.Corn :
 							default :
-							setScore(-10);
+								setScore(-10);
 						}
-
-						currentMessage = new Message(60,daClaw.prizeCarrying);
+						var messageToDisplay = new Message(60,daClaw.prizeCarrying.prizeType);
+						displayMessage(messageToDisplay);
 						break;
 
 
@@ -273,14 +300,14 @@
 
 		}
 
-		public function startParty(frames:uint)
+		public function displayMessage(messageToDisplay:Message)
 		{
-			partyTime = true;
-			partyTimer +=  frames;
-			var messageText:String;
-			var randomNum = Tool.randomRange(0,3);
+			messageTimer = messageToDisplay.lifeSpan;
+			messageTextField.text = messageToDisplay.text;
+			messageTextField.visible = true;
+			messageTextField.height = messageTextField.textHeight;
+			messageTextField.width = messageTextField.textWidth;
 		}
-
 		public function setScore(amount:int)
 		{
 			score +=  amount;
