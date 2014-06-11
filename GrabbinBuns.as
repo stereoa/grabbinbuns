@@ -1,15 +1,34 @@
-﻿package 
+﻿//TODO
+/*Particles
+Blood
+Confetti
+Blood level effect
+Camera flash effect
+Sound
+Music
+Hot cross buns remix?
+Effects
+Use prizeType to play corresponding sound.
+Game over screen
+Timer
+Party mode OD
+If catch things reveal what you caught and apply bonus points
+*/
+
+
+
+package 
 {
 	import flash.display.Bitmap;
 	import flash.display.MovieClip;
 	import flash.display.Sprite;
 	import flash.events.*;
-	import flash.utils.getDefinitionByName;
 	import flash.text.*;
 	import fl.motion.Color;
 
 	public class GrabbinBuns extends MovieClip
 	{
+		//IMAGES
 		[Embed('/Images/GirlHairBun.png')]
 		var GirlHairBun:Class;
 		[Embed('/Images/JeanBun.png')]
@@ -45,31 +64,29 @@
 		var Sunglasses:Class;
 		[Embed('/Images/Vest.png')]
 		var Vest:Class;
+		[Embed('/Images/Cactus.png')]
+		var Cactus:Class;
 
-		public var images:Array = new Array(CinnaBun,GirlHairBun,HamBun,JeanBun,BunB,Beaker,BowlerHat,CameraImg,Cheese,Corn,Grape,Hair,HotDog,PartyHat,Shark,Sunglasses,Vest);
-		public var prizes:Array = new Array();
+		public var images:Array = new Array(CinnaBun,GirlHairBun,HamBun,JeanBun,BunB,Beaker,BowlerHat,CameraImg,Cheese,Corn,Grape,Hair,HotDog,PartyHat,Shark,Sunglasses,Vest,Cactus);
+		public var prizes:Array = new Array  ;
+		public var soundManager:SoundManager = new SoundManager  ;
+		public var effectManager:EffectManager = new EffectManager(stage.stageWidth,stage.stageHeight);
 		public var score:int;
 		public var daClaw:Claw;
-		private var scoreTextField:TextField = new TextField();
-		private var messageTextField:TextField = new TextField();
-		private var entityLayer:MovieClip = new MovieClip();
-		private var effectLayer:MovieClip = new MovieClip();
-		private var freezeTimer:uint;
+		private var scoreTextField:TextField = new TextField  ;
+		private var messageTextField:TextField = new TextField  ;
+		private var entityLayer:MovieClip = new MovieClip  ;
+		private var effectLayer:MovieClip = new MovieClip  ;
 		private var messageTimer:uint;
-		private var gasTimer:uint;
-		private var gasIntensity:Number;
-		private var gasDuration:uint;
-		private var partyTimer:uint;
-		private var partyRandomRGB:Number = new Number(Math.random() * 0xFFFFFF);
-		private var partyIntensity:Number = new Number(0);
+
 		public function GrabbinBuns()
 		{
-			stage.addEventListener(MouseEvent.MOUSE_DOWN, startGame);
+			stage.addEventListener(MouseEvent.MOUSE_DOWN,startGame);
 		}
 
 		public function startGame(e:MouseEvent)
 		{
-			stage.removeEventListener(MouseEvent.MOUSE_DOWN, startGame);
+			stage.removeEventListener(MouseEvent.MOUSE_DOWN,startGame);
 			TitleScreen.visible = false;
 			//for holding all the entities on screen
 			stage.addChild(entityLayer);
@@ -77,12 +94,9 @@
 			//for drawing effects on stage
 			stage.addChild(effectLayer);
 
-			//spawn starting set
-			spawnNewItems(10);
-
 			//add the claw
-			stage.addEventListener(MouseEvent.MOUSE_DOWN, handleClick);
-			daClaw = new Claw();
+			stage.addEventListener(MouseEvent.MOUSE_DOWN,handleClick);
+			daClaw = new Claw  ;
 			daClaw.x = stage.mouseX;
 			daClaw.y = 250;
 			entityLayer.addChild(daClaw);
@@ -91,15 +105,16 @@
 			score = 0;
 
 			//prep font
-			var brainFlowerFont = new BrainFlower();
-			var brainFlowerFormat = new TextFormat();
+			var brainFlowerFont = new BrainFlower  ;
+			var brainFlowerFormat = new TextFormat  ;
 			brainFlowerFormat.font = brainFlowerFont.fontName;
 			brainFlowerFormat.bold = true;
 			brainFlowerFormat.color = 0xFFFFFF;
-			brainFlowerFormat.size = 30;
+			brainFlowerFormat.size = 48;
 
 			//create score field
 			scoreTextField.defaultTextFormat = brainFlowerFormat;
+			scoreTextField.selectable = false;
 			scoreTextField.text = "Score: " + score.toString();
 			scoreTextField.x = 0;
 			scoreTextField.y = 0;
@@ -108,13 +123,14 @@
 			//create message field
 			brainFlowerFormat.size = 72;
 			messageTextField.defaultTextFormat = brainFlowerFormat;
+			messageTextField.selectable = false;
 			messageTextField.x = stage.stageWidth / 2;
 			messageTextField.y = stage.stageHeight / 2;
 			messageTextField.multiline = true;
 			stage.addChild(messageTextField);
 
 			//add main frame update
-			stage.addEventListener(Event.ENTER_FRAME, update);
+			stage.addEventListener(Event.ENTER_FRAME,update);
 		}
 		public function update(e:Event)
 		{
@@ -124,39 +140,28 @@
 				checkClaw();
 			}
 			//spawn new items if needed
-			if (prizes.length < 10)
+			if (prizes.length < 5)
 			{
-				spawnNewItems(Tool.randomRange(1,5));
+				spawnNewItems(Tool.randomRange(1,3));
 			}
 			//tick the player
 			daClaw.tick();
 
 			//tick all prizes
-			if (freezeTimer >0)
-			{
-				freezeTimer--;
-			}
-			else
+			if (effectManager.freezeTimer == 0)
 			{
 				for each (var prize in prizes)
 				{
 					prize.tick();
 				}
 
-			}//handle special events
-			//party mode
-			effectLayer.graphics.clear();
+			}
 
-			if (partyTimer>0)
-			{
-				doParty();
-			}
-			if (gasTimer>0)
-			{
-				doGas();
-			}
-			//displaying messages
-			if (messageTimer>0)
+			//do effects
+			effectManager.tick(daClaw,prizes,effectLayer);
+
+			//displaying messages;
+			if ((messageTimer > 0))
 			{
 				messageTimer--;
 				//shake effect
@@ -169,34 +174,9 @@
 			}
 		}
 
-		public function doParty()
-		{
-			//every third frame generate a random color overlay
-			partyTimer--;
-			
-			if (partyTimer%3==0)
-			{
-				partyRandomRGB = Math.random() * 0xFFFFFF;
 
-			}
-			effectLayer.graphics.beginFill(partyRandomRGB, partyIntensity);
-			effectLayer.graphics.drawRect(0,0,stage.stageWidth,stage.stageHeight);
-			effectLayer.graphics.endFill();
-			if (partyTimer == 0) partyIntensity = 0;
-		}
 
-		public function doGas()
-		{
-			gasTimer--;
-
-			gasIntensity = gasTimer / gasDuration;
-			effectLayer.graphics.beginFill(0x99CC00, gasIntensity);
-			effectLayer.graphics.drawRect(0,0,stage.stageWidth,stage.stageHeight);
-			effectLayer.graphics.endFill();
-
-		}
-
-		public function spawnNewItems(amount:int)
+		public function spawnNewItems(amount:uint)
 		{
 			var bunsPresent:Boolean = false;
 			for each (var prize in prizes)
@@ -213,18 +193,21 @@
 				if (bunsPresent)
 				{
 					randomNum = Tool.randomRange(0,images.length - 1);
+					if ((randomNum == 4))
+					{
+						randomNum = Tool.randomRange(0,Prize.BunsMaxIndex);
+					}
 				}
 				else
 				{
 					randomNum = Tool.randomRange(0,Prize.BunsMaxIndex);
 
 				}
-				randomNum = Prize.Cheese;
-				var bmp:Bitmap = new images[randomNum]();
+				//randomNum = Prize.Cactus;
+				var bmp:Bitmap = new images[randomNum  ];
 				var newItem:Prize = new Prize(bmp,randomNum);
 				prizes.push(newItem);
 				entityLayer.addChild(newItem);
-
 				newItem.x = Tool.randomRange(0,stage.stageWidth);
 				newItem.y = stage.stageHeight - newItem.height;
 
@@ -232,28 +215,43 @@
 
 		}
 
+		public function spawnSpecificItems(type:uint,amount:uint)
+		{
+			for (var i = 0; i < amount; i++)
+			{
+				var bmp:Bitmap = new images[type  ];
+				var newItem:Prize = new Prize(bmp,type);
+				prizes.push(newItem);
+				entityLayer.addChild(newItem);
+
+				newItem.x = Tool.randomRange(0,stage.stageWidth);
+				newItem.y = stage.stageHeight - newItem.height;
+			}
+
+		}
+
 		public function handleClick(e:Event)
 		{
 			daClaw.drop();
+			soundManager.playSound(Sounds.Claws);
 		}
 
 		public function checkClaw()
 		{
 			if (daClaw.clawState == Claw.AT_BOTTOM)
 			{
-				for (var i:int = 0; i<prizes.length; i++)
+				for (var i:int = 0; i < prizes.length; i++)
 				{
 					var prizeToCheck:Prize = prizes[i];
 					if (Math.abs(prizeToCheck.x + prizeToCheck.width / 2 - daClaw.x) < 50)
 					{
 						entityLayer.removeChild(prizeToCheck);
 						daClaw.addChild(prizeToCheck);
-						prizeToCheck.x = (prizeToCheck.width/2) * -1;
+						prizeToCheck.x = prizeToCheck.width / 2 * -1;
 						prizeToCheck.y = 0;
 						prizeToCheck.beingLifted = true;
-						daClaw.clawState = Claw.RISING;
-						daClaw.hasItem = true;
-						daClaw.prizeCarrying = prizeToCheck;
+
+						daClaw.grab(prizeToCheck);
 						prizes.splice(prizes.indexOf(prizeToCheck),1);
 						switch (daClaw.prizeCarrying.prizeType)
 						{
@@ -268,19 +266,24 @@
 								setScore(500);
 								break;
 							case Prize.PartyHat :
-								partyTimer +=  600;
-								partyIntensity +=  .2;
+								effectManager.startParty();
+								spawnSpecificItems(Prize.PartyHat,1);
+
 								break;
-							case Prize.BowlerHat :
+							case Prize.Cactus :
+							case Prize.Shark :
+								effectManager.startHurt();
 								break;
 							case Prize.CameraImg :
-								freezeTimer = 120;
+								effectManager.startFreeze();
 								break;
 							case Prize.Cheese :
-								//cover screen with gas
-								gasTimer = 240;
-								gasDuration = 240;
+								effectManager.startGas();
 							case Prize.Corn :
+								break;
+							case Prize.Beaker :
+								effectManager.startFast(daClaw);
+								break;
 							default :
 								setScore(-10);
 						}
@@ -300,6 +303,7 @@
 
 		}
 
+
 		public function displayMessage(messageToDisplay:Message)
 		{
 			messageTimer = messageToDisplay.lifeSpan;
@@ -312,6 +316,7 @@
 		{
 			score +=  amount;
 			scoreTextField.text = "Score: " + score.toString();
+			scoreTextField.width = scoreTextField.textWidth;
 		}
 	}
 }

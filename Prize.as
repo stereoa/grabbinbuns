@@ -26,6 +26,7 @@
 		public static var Shark:int = 14;
 		public static var Sunglasses:int = 15;
 		public static var Vest:int = 16;
+		public static var Cactus:int = 17;
 		
 		public var beingLifted:Boolean = false;
 		private var xVel:int = Tool.randomRange(1,20);

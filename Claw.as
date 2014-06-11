@@ -11,11 +11,12 @@
 		public static const DROPPING:uint = 2;
 		public static const AT_BOTTOM:uint = 3;
 		public var clawState:int = Claw.READY;
-		public var hasItem:Boolean = false;
 		public var prizeCarrying:Prize;
-		public var isHurt:Boolean = false;
-		public var hurtTime:int = 0;
-		private var flickerWait:int = 0;
+		
+		private var hasItem:Boolean = false;
+		private var speed:Number = .09;
+		
+		public var vx:Number;
 		public function Claw()
 		{
 			super();
@@ -23,43 +24,16 @@
 		}
 		public function tick()
 		{
-			if (isHurt)
-			{
-				//TODO: generate and simulate blood particle in area x:-200 to 50 and y: -100 to 50
-				if (hurtTime>0)
-				{
-					hurtTime--
-					flickerWait++;
-					if (flickerWait == 5)
-					{
-						if (this.visible)
-						{
-							this.visible = false;
-						}
-						else
-						{
-							this.visible = true;
-						}
-						flickerWait = 0;
-					}
-				}
-				else 
-				{
-					isHurt = false;
-					hurtTime = 0;
-					
-			
-				}
-			}
 			if (clawState<3)
 			{
-				x += (stage.mouseX - x) * .09;
+				vx = (stage.mouseX - x) * speed;
+				x += vx;
 			}
 			if (clawState == Claw.DROPPING)
 			{
 				if (y < stage.stageHeight - 100)
 				{
-					y +=  15;
+					y +=  speed * 200;
 				}
 				else
 				{
@@ -72,15 +46,15 @@
 				{
 					if (hasItem)
 					{
-						y -=  5;
+						y -=  speed * 50;
 						if (prizeCarrying.prizeType <= Prize.BunsMaxIndex)
 						{
-							y -=  30;
+							y -=  speed * 300;
 						}
 					}
 					else
 					{
-						y -=  15;
+						y -=  speed * 200;
 					}
 				}
 				else
@@ -89,6 +63,7 @@
 					{
 						removeChild(prizeCarrying);
 						hasItem = false;
+						
 						prizeCarrying = null;
 					}
 					clawState = Claw.READY;
@@ -97,13 +72,16 @@
 
 			}
 		}
-		public function hurt(frames:int)
+
+		public function speedUp()
 		{
-			bloodAnim.visible = true;
-			hurtTime = frames;
-			isHurt = true;
+			speed*=2;
 		}
-		
+		public function slowDown()
+		{
+			speed/=2;
+		}
+
 		public function drop()
 		{
 			if (clawState != Claw.RISING)
@@ -112,6 +90,11 @@
 			}
 		}
 		
+		public function grab(prizeToCheck:Prize)
+		{
+			prizeCarrying = prizeToCheck;
+			hasItem = true;
+		}
 		private function tryGrab()
 		{
 			gotoAndStop(2);
